@@ -1,3 +1,7 @@
+//spectrogram.js: a simple example of a spectrogram visualization using Three.js and the Web Audio API.
+
+import * as THREE from './js/three.module.js';
+
 
 // Request access to the microphone
 navigator.mediaDevices.getUserMedia({ audio: true, video: false })
