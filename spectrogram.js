@@ -1,6 +1,10 @@
-//spectrogram.js: a simple example of a spectrogram visualization using Three.js and the Web Audio API.
 
-import * as THREE from './js/three.module.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
+
+
+
 
 
 // Request access to the microphone
@@ -22,23 +26,36 @@ navigator.mediaDevices.getUserMedia({ audio: true, video: false })
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        // Add this code after renderer setup in `spectrogram.js`
+        renderer.domElement.addEventListener('click', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            console.log(`X: ${x}, Y: ${y}`);
+            // Inside the click event listener
+            document.getElementById('info').innerText = `X: ${x}, Y: ${y}`;
+
+            // Here you can also display this information on the HTML page by updating DOM elements
+        });
+
+
+
+
         camera.position.z = 5;
 
         // Spectrogram geometry setup
         const geometry = new THREE.PlaneGeometry(5, 5, 50, bufferLength / 2);
         geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
+        
         const material = new THREE.MeshPhongMaterial({
             side: THREE.DoubleSide,
-            vertexColors: THREE.VertexColors
+            vertexColors: true
+            //THREE.VertexColors // Ensure this is correctly set
         });
         const spectrogram = new THREE.Mesh(geometry, material);
         scene.add(spectrogram);
 
-        // // Lighting
-        // const ambientLight = new THREE.AmbientLight(0x404040); // soft white light
-        // scene.add(ambientLight);
-        // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        // scene.add(directionalLight);
 
 
         // Example of lighting adjustments
@@ -101,46 +118,109 @@ navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             geometry.attributes.color.needsUpdate = true;
         }
         
+
+
+
+
+
+
+        const widgetScene = new THREE.Scene();
+        const widgetCamera = new THREE.PerspectiveCamera(75, 300 / 300, 0.1, 1000); // Assuming a 300x300px orbit widget
+        widgetCamera.position.z = 5;
+        const cubeGeometry = new THREE.BoxGeometry();
+        const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        widgetScene.add(cube);
+
+        const orbitControls = new OrbitControls(widgetCamera, renderer.domElement);
+        orbitControls.update();
+                
         
         
         
+
+        // function animate() {
+        //     updateSpectrogram();
+
+        //     requestAnimationFrame(animate);
+
+        //     updateSpectrogram();
+
+        //     renderer.render(scene, camera);
+        //     // // Add these two lines for the second scene
+        //     orbitControls.update(); // only required if controls.enableDamping or controls.autoRotate are set to true
+
+        //     renderer.render(widgetScene, widgetCamera); // Render the orbit widget scene
+            
+
+        //     updateSpectrogram();
+        // }
+
+        orbitControls.addEventListener('change', () => {
+            // Sync position
+            camera.position.copy(widgetCamera.position);
+            camera.rotation.copy(widgetCamera.rotation);
+            
+            // Optional: If you want to ensure the same zoom level:
+            camera.zoom = widgetCamera.zoom;
+            camera.updateProjectionMatrix(); // Required after modifying zoom
+            
+            // Any additional properties you want to sync (e.g., camera.up if you're allowing for tilt changes)
+        });
         
+
 
         function animate() {
-            updateSpectrogram();
-
             requestAnimationFrame(animate);
-
+        
             updateSpectrogram();
-
+        
+            // Render the main scene
             renderer.render(scene, camera);
+        
+            // Set up for rendering the widget scene in a small viewport
+            const width = renderer.domElement.width;
+            const height = renderer.domElement.height;
+            const widgetSize = {
+                width: width / 10,
+                height: height / 10
+            };
+        
+            // Define the small viewport (top-right corner)
+            const smallerViewPort = {
+                x: width - widgetSize.width,
+                y: height - widgetSize.height,
+                width: widgetSize.width,
+                height: widgetSize.height
+            };
+        
+            // Set the viewport for the cube orbit widget.
+            // Note: WebGLRenderer.setViewport parameters -> (x, y, width, height);
+            renderer.setViewport(smallerViewPort.x, smallerViewPort.y, smallerViewPort.width, smallerViewPort.height);
+            renderer.setScissor(smallerViewPort.x, smallerViewPort.y, smallerViewPort.width, smallerViewPort.height);
+            renderer.setScissorTest(true); // Enable the scissor to clip the rendering
+        
+            orbitControls.update(); // Update the orbit controls for interaction
+            renderer.render(widgetScene, widgetCamera); // Render the orbit widget scene
 
-            updateSpectrogram();
+
+            // Sync the main camera with the widget camera
+            camera.position.copy(widgetCamera.position);
+            camera.quaternion.copy(widgetCamera.quaternion);
+            camera.fov = widgetCamera.fov;
+            camera.updateProjectionMatrix();
+
+            
+            // Reset viewport back to full canvas size for other rendering operations
+            renderer.setViewport(0, 0, width, height);
+            renderer.setScissorTest(false); // Disable scissor test after rendering the small view
         }
+        
 
         animate();
 
-
-        // // Initialize OrbitControls with your main camera and renderer.domElement
-        // const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-        // // Optional: Configure controls as needed
-        // controls.enableDamping = true; // An animation loop is required when either damping or auto-rotation is enabled
-        // controls.dampingFactor = 0.25;
-        // controls.enableZoom = true;
-
-        // function animate() {
-        //     requestAnimationFrame(animate);
-            
-        //     // Update controls every frame
-        //     controls.update();
-            
-        //     updateSpectrogram();
-        //     renderer.render(scene, camera);
-        // }
-
-        // animate();
     })
     .catch(err => {
         console.error('Accessing the microphone failed: ', err);
     });
+

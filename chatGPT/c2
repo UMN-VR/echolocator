@@ -1,0 +1,2 @@
+Good job, now help me brainstorm how to add a touch zone that detects where the user is clicking and displays an x and y value, a 'orbit widget' a separate scene that uses obit controls to orbit around a cube, later we will sync up the main camera position with that of the cube widget 
+
